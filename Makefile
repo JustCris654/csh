@@ -6,13 +6,13 @@
 
 build_and_run: main run
 
-main: main.c
-	clang main.c -o main
+main.out: main.c
+	clang main.c -o main.out
 
-run: main
-	./main
+run: main.out
+	./main.out
 
 clean:
-	rm main
+	rm main.out
 
 # end
