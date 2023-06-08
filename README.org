@@ -1,0 +1,5 @@
+#+title: csh - C shell
+
+* csh
+Shell entirely written in c for a personal project
+The starting point is this blog post [[https://brennan.io/2015/01/16/write-a-shell-in-c/][write a shell in c]]
