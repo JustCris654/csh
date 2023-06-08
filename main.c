@@ -11,18 +11,22 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#define SEESH_RL_BUFSIZE 1024
-#define SEESH_TOK_BUFSIZE 64
-#define SEESH_TOK_DELIM " \t\r\n\a"
+#define CSH_RL_BUFSIZE 1024
+#define CSH_TOK_BUFSIZE 64
+#define CSH_TOK_DELIM " \t\r\n\a"
 
 /* char  *see_sh_read_line_old(); */
-void   see_shell_loop(void);
-char  *see_sh_read_line();
-char **see_sh_split_line(char *line);
-int    see_sh_launch(char **args);
+void   csh_loop(void);
+char  *csh_read_line();
+char **csh_split_line(char *line);
+int    csh_launch(char **args);
+int    csh_cd(char **args);
+int    csh_help(char **args);
+int    csh_quit(char **args);
+int    csh_execute(char **args);
 
 /* char *see_sh_read_line_old() { */
-/*     size_t bufsize = SEESH_RL_BUFSIZE; */
+/*     size_t bufsize = CSH_RL_BUFSIZE; */
 /*     int    position = 0; */
 /*     char  *buffer = malloc(sizeof(char) * bufsize); */
 /*     int    c; */
@@ -45,7 +49,7 @@ int    see_sh_launch(char **args);
 
 /*         // if we exceed buffer size reallocate */
 /*         if (position >= bufsize) { */
-/*             bufsize += SEESH_RL_BUFSIZE; */
+/*             bufsize += CSH_RL_BUFSIZE; */
 /*             buffer = realloc(buffer, bufsize); */
 
 /*             if (!buffer) { */
@@ -56,7 +60,85 @@ int    see_sh_launch(char **args);
 /*     } */
 /* } */
 
-char *see_sh_read_line() {
+char *builtin_str[] = {"cd", "help", "quit", "exit"};
+
+int (*builtin_func[])(char **) = {&csh_cd, &csh_help, &csh_quit, &csh_quit};
+
+int csh_num_builtins() {
+    return sizeof(builtin_str) / sizeof(char *);
+}
+
+int main(int argc, char **argv) {
+    csh_loop();
+
+    return EXIT_SUCCESS;
+}
+
+void csh_loop(void) {
+    char  *line;
+    char **args;
+    int    status;
+    int    exit;
+
+    /* int file = open("test.txt", O_RDONLY); */
+    /* dup2(file, STDIN_FILENO); */
+
+    do {
+        printf("> ");
+
+        line = csh_read_line();
+        char **args = csh_split_line(line);
+        csh_execute(args);
+
+        free(line);
+        free(args);
+
+    } while (exit == 0);
+}
+
+int csh_execute(char **args) {
+    if (args[0] == NULL) {
+        return -1;
+    }
+
+    for (int i = 0; i < csh_num_builtins(); i++) {
+        if (strcmp(args[0], builtin_str[i]) == 0) {
+            return (*builtin_func[i])(args);
+        }
+    }
+
+    return csh_launch(args);
+}
+
+int csh_cd(char **args) {
+    if (args[1] == NULL) {
+        fprintf(stderr, "Expected argument to '%s'\n", args[0]);
+        return -1;
+    }
+
+    if (chdir(args[1]) == -1) {
+        perror("lsh (cd)");
+        return -1;
+    }
+
+    return 1;
+}
+
+int csh_quit(char **args) {
+    exit(0);
+}
+
+int csh_help(char **args) {
+    printf("Cristian Scapin's CSH\n");
+    printf("Built in programs:\n");
+
+    for (int i = 0; i < csh_num_builtins(); i++) {
+        printf("  %s\n", builtin_str[i]);
+    }
+    return 1;
+}
+
+char *csh_read_line() {
     char  *line = NULL;
     size_t bufsize = 0;
 
@@ -71,8 +153,8 @@ char *see_sh_read_line() {
     return line;
 }
 
-char **see_sh_split_line(char *line) {
-    int    bufsize = SEESH_TOK_BUFSIZE;
+char **csh_split_line(char *line) {
+    int    bufsize = CSH_TOK_BUFSIZE;
     int    position = 0;
     char **tokens = malloc(bufsize * sizeof(char));
     char  *token;
@@ -82,12 +164,12 @@ char **see_sh_split_line(char *line) {
         exit(EXIT_FAILURE);
     }
 
-    token = strtok(line, SEESH_TOK_DELIM);
+    token = strtok(line, CSH_TOK_DELIM);
     while (token != NULL) {
         tokens[position++] = token;
 
         if (position > bufsize) {
-            bufsize += SEESH_TOK_BUFSIZE;
+            bufsize += CSH_TOK_BUFSIZE;
             tokens = realloc(tokens, bufsize * sizeof(char));
 
             if (tokens == NULL) {
@@ -95,14 +177,14 @@ char **see_sh_split_line(char *line) {
                 exit(EXIT_FAILURE);
             }
         }
-        token = strtok(NULL, SEESH_TOK_DELIM);
+        token = strtok(NULL, CSH_TOK_DELIM);
     }
 
     tokens[position] = NULL;
     return tokens;
 }
 
-int see_sh_launch(char **args) {
+int csh_launch(char **args) {
     pid_t pid, wait_pid;
     int   status;
 
@@ -128,29 +210,4 @@ int see_sh_launch(char **args) {
     }
 
     return 0;
-}
-
-void see_shell_loop(void) {
-    char  *line;
-    char **args;
-    int    status;
-    int    exit;
-
-    /* int file = open("test.txt", O_RDONLY); */
-    /* dup2(file, STDIN_FILENO); */
-
-    do {
-        printf("> ");
-
-        line = see_sh_read_line();
-        char **tokens = see_sh_split_line(line);
-        see_sh_launch(tokens);
-
-    } while (exit == 0);
-}
-
-int main(int argc, char **argv) {
-    see_shell_loop();
-
-    return EXIT_SUCCESS;
 }
