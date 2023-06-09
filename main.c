@@ -21,8 +21,8 @@ char  *csh_read_line();
 char **csh_split_line(char *line);
 int    csh_launch(char **args);
 int    csh_cd(char **args);
-int    csh_help(char **args);
-int    csh_quit(char **args);
+int    csh_help();
+int    csh_quit();
 int    csh_execute(char **args);
 
 /* char *see_sh_read_line_old() { */
@@ -68,7 +68,7 @@ int csh_num_builtins() {
     return sizeof(builtin_str) / sizeof(char *);
 }
 
-int main(int argc, char **argv) {
+int main(/* int argc, char **argv */) {
     csh_loop();
 
     return EXIT_SUCCESS;
@@ -78,7 +78,7 @@ void csh_loop(void) {
     char  *line;
     char **args;
     int    status;
-    int    exit;
+    int    exit = 0;
 
     /* int file = open("test.txt", O_RDONLY); */
     /* dup2(file, STDIN_FILENO); */
@@ -87,8 +87,8 @@ void csh_loop(void) {
         printf("> ");
 
         line = csh_read_line();
-        char **args = csh_split_line(line);
-        csh_execute(args);
+        args = csh_split_line(line);
+        status = csh_execute(args);
 
         free(line);
         free(args);
@@ -124,11 +124,11 @@ int csh_cd(char **args) {
     return 1;
 }
 
-int csh_quit(char **args) {
+int csh_quit() {
     exit(0);
 }
 
-int csh_help(char **args) {
+int csh_help() {
     printf("Cristian Scapin's CSH\n");
     printf("Built in programs:\n");
 
@@ -185,7 +185,7 @@ char **csh_split_line(char *line) {
 }
 
 int csh_launch(char **args) {
-    pid_t pid, wait_pid;
+    pid_t pid, wait_pid = 0;
     int   status;
 
     pid = fork();
@@ -198,7 +198,7 @@ int csh_launch(char **args) {
             perror("see_sh");
             exit(EXIT_FAILURE);
         }
-    } else if (pid < 0) { // error on forking
+    } else if (pid == -1) { // error on forking
         perror("see_sh");
     } else {
         do {
@@ -209,5 +209,5 @@ int csh_launch(char **args) {
                                         // from termination by return or signal
     }
 
-    return 0;
+    return wait_pid;
 }
