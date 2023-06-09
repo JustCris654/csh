@@ -1,6 +1,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <linux/limits.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,6 +15,7 @@
 #define CSH_RL_BUFSIZE 1024
 #define CSH_TOK_BUFSIZE 64
 #define CSH_TOK_DELIM " \t\r\n\a"
+#define CWD_BUFSIZE 256
 
 /* char  *see_sh_read_line_old(); */
 void   csh_loop(void);
@@ -24,6 +26,7 @@ int    csh_cd(char **args);
 int    csh_help();
 int    csh_quit();
 int    csh_execute(char **args);
+char  *get_current_dir_name();
 
 /* char *see_sh_read_line_old() { */
 /*     size_t bufsize = CSH_RL_BUFSIZE; */
@@ -70,7 +73,6 @@ int csh_num_builtins() {
 
 int main(/* int argc, char **argv */) {
     csh_loop();
-
     return EXIT_SUCCESS;
 }
 
@@ -79,12 +81,15 @@ void csh_loop(void) {
     char **args;
     int    status;
     int    exit = 0;
+    char  *current_dir;
 
     /* int file = open("test.txt", O_RDONLY); */
     /* dup2(file, STDIN_FILENO); */
 
     do {
-        printf("> ");
+        current_dir = get_current_dir_name();
+        printf("%s> ", current_dir);
+        free(current_dir);
 
         line = csh_read_line();
         args = csh_split_line(line);
@@ -92,8 +97,27 @@ void csh_loop(void) {
 
         free(line);
         free(args);
-
     } while (exit == 0);
+}
+
+char *get_current_dir_name() {
+    char  *buf = NULL;
+    size_t size = CWD_BUFSIZE;
+
+    buf = malloc(size * sizeof(char));
+
+    while (size <= PATH_MAX) {
+        buf = getcwd(buf, size);
+        if (buf != NULL) {
+            return buf;
+        }
+
+        free(buf);
+        size += CWD_BUFSIZE;
+        buf = malloc(size * sizeof(char));
+    }
+
+    return NULL;
 }
 
 int csh_execute(char **args) {
